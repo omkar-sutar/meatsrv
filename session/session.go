@@ -85,7 +85,7 @@ func (s *SessionManager) Get(token string, otp bool) (*SessionValue, error) {
 		if !ok {
 			return nil, errors.New(constants.InvalidOTP)
 		}
-		//delete(s.sessions, sessionKey)
+		delete(s.sessions, sessionKey)
 		return &session, nil
 	}
 

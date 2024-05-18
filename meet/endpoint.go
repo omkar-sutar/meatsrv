@@ -8,6 +8,7 @@ import (
 
 type MeetEndpoints struct {
 	StartMeetEndpoint utils.WebsocketEndpoint
+	JoinMeetEndpoint  utils.WebsocketEndpoint
 }
 
 func AddEndpoints(bl *BL) MeetEndpoints {
@@ -21,7 +22,18 @@ func AddEndpoints(bl *BL) MeetEndpoints {
 			bl.StartMeet(w, startMeetRequest)
 		},
 	}
+	joinMeetEndpoint := utils.WebsocketEndpoint{
+		Ep: func(w http.ResponseWriter, req interface{}) {
+			// Type assertion to authenticate request
+			joinMeetRequest, ok := req.(meetspec.JoinMeetRequest)
+			if !ok {
+				return
+			}
+			bl.JoinMeet(w, joinMeetRequest)
+		},
+	}
 	return MeetEndpoints{
 		StartMeetEndpoint: startMeetEndpoint,
+		JoinMeetEndpoint:  joinMeetEndpoint,
 	}
 }

@@ -8,9 +8,13 @@ type StartMeetRequest struct {
 }
 
 type StartMeetResponse struct {
+	MeetID string `json:"meetid"`
 }
 
 type JoinMeetRequest struct {
+	OTP     string `validate:"required"`
+	Request *http.Request
+	MeetID  string `json:"meetid" validate:"required"`
 }
 
 type JoinMeetResponse struct {

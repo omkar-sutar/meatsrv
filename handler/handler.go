@@ -15,9 +15,9 @@ type HandlerConfig struct {
 	Endpoint func(req interface{}) (interface{}, error)
 }
 
-type WebsocketHandlerConfig struct{
+type WebsocketHandlerConfig struct {
 	Decoder  func(r *http.Request) (interface{}, error)
-	Endpoint func(w http.ResponseWriter,req interface{})
+	Endpoint func(w http.ResponseWriter, req interface{})
 }
 
 // NewHandler creates a new handler with the given configuration.
@@ -47,10 +47,10 @@ func NewHandler(config HandlerConfig) http.Handler {
 func NewWebsocketHandler(config WebsocketHandlerConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		req, err := config.Decoder(r)
-		if err != nil {
+		if err != nil {	
 			utils.WriteError(w, err, http.StatusBadRequest)
 			return
 		}
-		config.Endpoint(w,req)
+		config.Endpoint(w, req)
 	})
 }

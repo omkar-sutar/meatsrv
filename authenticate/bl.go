@@ -5,6 +5,7 @@ import (
 	"log"
 	"meatsrv/session"
 	authenticatespec "meatsrv/spec/authenticate"
+	"strings"
 )
 
 type BL struct {
@@ -18,8 +19,8 @@ func NewAuthenticateBL(sessionManager *session.SessionManager) *BL {
 }
 
 func (svc *BL) Authenticate(req authenticatespec.AuthenticateRequest) (*authenticatespec.AuthenticateResponse, error) {
-	log.Println("BL:Authenticate email=",req.Email)
-	if req.Email == "omkar" && req.Password == "omkar" {
+	log.Println("BL:Authenticate email=", req.Email)
+	if strings.Contains(req.Email, "omkar") {
 		token := svc.sessionManager.GenerateAccessToken(req.Email)
 		return &authenticatespec.AuthenticateResponse{
 			AccessToken: token,
@@ -31,16 +32,16 @@ func (svc *BL) Authenticate(req authenticatespec.AuthenticateRequest) (*authenti
 func (svc *BL) GenerateOTP(req authenticatespec.OTPRequest) (*authenticatespec.OTPResponse, error) {
 	log.Println("BL:GenerateOTP")
 	//Get session
-	session,err:=svc.sessionManager.GetSessionFromAccessToken(req.AccessToken)
-	if err!=nil{
-		return nil,err
+	session, err := svc.sessionManager.GetSessionFromAccessToken(req.AccessToken)
+	if err != nil {
+		return nil, err
 	}
 
-	otp,err:=svc.sessionManager.GenerateOTP(req.AccessToken)
-	if err!=nil{
-		return nil,err
+	otp, err := svc.sessionManager.GenerateOTP(req.AccessToken)
+	if err != nil {
+		return nil, err
 	}
-	log.Printf("OTP generated for email=%s\n",session.Email)
+	log.Printf("OTP generated for email=%s\n", session.Email)
 	return &authenticatespec.OTPResponse{
 		OTP: otp,
 	}, nil
