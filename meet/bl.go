@@ -48,6 +48,7 @@ func (svc *BL) StartMeet(w http.ResponseWriter, req meetspec.StartMeetRequest) {
 		log.Println("BL:StartMeet: Response write failed")
 	}
 	meetInfo := meetspec.NewMeet(meetid)
+	meetInfo.Owner = session.Email
 	meetInfo.AddClient(meetspec.SingleMeetClient{
 		Email:     session.Email,
 		Conn:      conn,
@@ -99,6 +100,7 @@ func (svc *BL) ProcessClient(meet *meetspec.SingleMeetInfo, client meetspec.Sing
 	<-client.Done
 	cancelFunc()
 	meet.DeleteClient(client.Email)
+	log.Printf("Client closed")
 }
 
 func (svc *BL) ReadConnectionAsync(ctx context.Context, meet *meetspec.SingleMeetInfo, client meetspec.SingleMeetClient) {
@@ -130,27 +132,37 @@ func (svc *BL) ReadConnectionAsync(ctx context.Context, meet *meetspec.SingleMee
 func (svc *BL) MeetMessageQueueProcessorAsync(ctx context.Context, meet *meetspec.SingleMeetInfo) {
 	go func() {
 		defer log.Println("End goroutine #2")
-		select {
-		case msg := <-meet.MessageQueue:
-			log.Printf("Message retrieved = %v\n", msg)
-			switch msg.Type {
-			case meetspec.BroadcastMessageType:
-				log.Printf("Broadcast message\n")
-				for _, client := range meet.Clients {
-					if client.Email != msg.From {
-						client.WriteChan <- msg
+		for {
+			select {
+			case msg := <-meet.MessageQueue:
+				log.Printf("Message retrieved = %v\n", msg)
+				switch msg.Type {
+				case meetspec.BroadcastMessageType:
+					for _, client := range meet.Clients {
+						if client.Email != msg.From {
+							client.WriteChan <- msg
+						}
+					}
+				case meetspec.DirectMessageType:
+					for _, client := range meet.Clients {
+						if client.Email == msg.To {
+							client.WriteChan <- msg
+							break
+						}
+					}
+				case meetspec.ClientControlMessageType:
+					if msg.Intent == meetspec.EndMeetIntent {
+						if msg.From == meet.Owner {
+							log.Printf("Authorized end meet message received, message = %v", msg)
+							meet.Done <- 0
+							continue
+						}
+						log.Printf("Unauthorized end meet message received, message = %v", msg)
 					}
 				}
-			case meetspec.DirectMessageType:
-				for _, client := range meet.Clients {
-					if client.Email == msg.To {
-						client.WriteChan <- msg
-						break
-					}
-				}
+			case <-ctx.Done():
+				return
 			}
-		case <-ctx.Done():
-			return
 		}
 	}()
 }
@@ -206,6 +218,11 @@ func (svc *BL) JoinMeet(w http.ResponseWriter, req meetspec.JoinMeetRequest) {
 		Conn:      conn,
 		Done:      make(chan int, 5),
 		WriteChan: make(chan meetspec.Message),
+	}
+	// Delete if client already exists
+	existingClient, ok := meetInfo.GetClient(session.Email)
+	if ok {
+		existingClient.Done <- 1
 	}
 	meetInfo.AddClient(client)
 	svc.ProcessClient(meetInfo, client)
